@@ -354,7 +354,8 @@ const Switch = ({ children, location }) => {
         element.props.nest
       ))[0]
     )
-      return cloneElement(element, { match });
+      return cloneElement(element, { match, key: element.props.path });
+        // return cloneElement(element, { match });
   }
 
   return null;
