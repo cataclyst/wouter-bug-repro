@@ -6,7 +6,8 @@ import { Switch, Route, Router, Link, useParams, useLocation } from "wouter";
 import { useBrowserLocation, navigate } from "wouter/use-browser-location";
 
 import "./styles.css";
-import {render} from "react-dom";
+import {createRoot} from "react-dom/client";
+// import {render} from "react-dom";
 
 const Page1 = () => {
     const params = useParams();
@@ -71,9 +72,9 @@ function App() {
 const rootElement = document.getElementById("root");
 if (rootElement) {
     // React 17:
-    render(<App />, rootElement);
+    // render(<App />, rootElement);
 
-    // React 18:
-    // const root = createRoot(rootElement);
-    // root.render(<App />);
+    // React 18+:
+    const root = createRoot(rootElement);
+    root.render(<App />);
 }
