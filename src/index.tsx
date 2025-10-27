@@ -1,39 +1,51 @@
-// import React, {useContext, useEffect, createContext} from "react";
-// import { createRoot } from "react-dom/client";
-// import { createRoot } from "react-dom";
+import React from "react";
+import { createRoot } from "react-dom/client";
 
-import { Switch, Route, Router, Link, useParams, useLocation } from "wouter";
-import { useBrowserLocation, navigate } from "wouter/use-browser-location";
+import { Switch, Route, Router, Link, useLocation } from "wouter";
+import { useBrowserLocation } from "wouter/use-browser-location";
 
 import "./styles.css";
-import {render} from "react-dom";
 
 const Page1 = () => {
-    const params = useParams();
     const [location] = useLocation();
 
-    alert(`Page 1 was rendered!\nParam: ${params.pageId}\nLocation: ${location}`)
+    alert(`Page 1 was rendered!\nLocation from useLocation(): ${location}`)
 
     return (
         <div>
-            <p>The param on Page 1 is: {params.pageId}</p>
-            <p>The location on Page 1 is: {location}</p>
+            <p>Go to <Link to="/page/2">/page/2</Link> now</p>
+
+            <hr/>
+
+            <p>If you arrived here at the at of the reproduction after you pressed "back" in your browser, then you will have seen two alerts pop up, one for page 2 (which you left behind) and one for page 1 (which you have re-entered).</p>
+            <p>The alert for page 2 is wrong, since it should not have been re-rendered when we left the page.</p>
         </div>
     );
 };
 
 const Page2 = () => {
-    const params = useParams();
     const [location] = useLocation();
 
-    alert(`Page 2 was rendered!\nParam: ${params.pageId}\nLocation: ${location}`)
+    alert(`Page 2 was rendered!\nLocation from useLocation(): ${location}`)
 
     return (
         <div>
-            <p>The param on Page 2 is: {params.pageId}</p>
-            <p>The location on Page 2 is: {location}</p>
+            <p>Use the browser's back button now, or click here</p>
         </div>
     );
+};
+
+const Home = () => {
+    return <div>
+        <h1>Steps to reproduce:</h1>
+        <ul>
+            <li><strong>DO NOT USE CODESANDBOX'S BUILT-IN BROWSER-PREVIEW FOR THIS! The browser back/forward buttons there don't work the same like those in native browsers do! Go to this sandbox's "deployed" version at <a href="...">...</a> instead.</strong></li>
+            <li>Go to <Link to="/page/1">/page/1</Link></li>
+            <li>(Dismiss the alert that pops up for now)</li>
+            <li>Follow the link to <code>/page/2</code> on that page.</li>
+            <li>Press the browser's "back" button.</li>
+        </ul>
+    </div>
 };
 
 function App() {
@@ -42,24 +54,14 @@ function App() {
             <section>
                 <nav>
                     <Link href="/page/1">Page One</Link>
-                    <Link href="/a-different-page/2">Page Two</Link>
+                    <Link href="/page/2">Page Two</Link>
                 </nav>
-
-
-                <button onClick={() => {
-                    navigate("/page/1");
-                }}>To Page 1 (sync)</button>
-
-                <button onClick={() => {
-                    Promise.resolve().then(() => {
-                        navigate("/a-different-page/2");
-                    });
-                }}>To Page 2 (with promise)</button>
 
                 <main>
                     <Switch>
-                        <Route path="/page/:pageId" component={Page1} />
-                        <Route path="/a-different-page/:pageId" component={Page2} />
+                        <Route path="/page/1" component={Page1} />
+                        <Route path="/page/2" component={Page2} />
+                        <Route path="/" component={Home} />
                         <Route path="/:anything*">Default Route: nothing found!</Route>
                     </Switch>
                 </main>
@@ -70,10 +72,6 @@ function App() {
 
 const rootElement = document.getElementById("root");
 if (rootElement) {
-    // React 17:
-    render(<App />, rootElement);
-
-    // React 18:
-    // const root = createRoot(rootElement);
-    // root.render(<App />);
+    const root = createRoot(rootElement);
+    root.render(<App />);
 }
