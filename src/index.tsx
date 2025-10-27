@@ -39,7 +39,7 @@ const Home = () => {
     return <div>
         <h1>Steps to reproduce:</h1>
         <ul>
-            <li><strong>DO NOT USE CODESANDBOX'S BUILT-IN BROWSER-PREVIEW FOR THIS! The browser back/forward buttons there don't work the same like those in native browsers do! Go to this sandbox's "deployed" version at <a href="...">...</a> instead.</strong></li>
+            <li><strong>DO NOT USE CODESANDBOX'S BUILT-IN BROWSER-PREVIEW FOR THIS! The browser back/forward buttons there don't work the same like those in native browsers do! Open this sandbox's "deployed" version in a browser window instead: <a href="https://llp68y-3000.csb.app/">https://llp68y-3000.csb.app/</a> instead.</strong></li>
             <li>Go to <Link to="/page/1">/page/1</Link></li>
             <li>(Dismiss the alert that pops up for now)</li>
             <li>Follow the link to <code>/page/2</code> on that page.</li>
