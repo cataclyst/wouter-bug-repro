@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from './react-deps.js';
+import { useSyncExternalStore } from "./react-deps.js";
 
 /**
  * History API docs @see https://developer.mozilla.org/en-US/docs/Web/API/History
@@ -25,32 +25,41 @@ const subscribeToLocationUpdates = (callback) => {
   };
 };
 
-const useLocationProperty = (fn, ssrFn) =>
+export const useLocationProperty = (fn, ssrFn) =>
   useSyncExternalStore(subscribeToLocationUpdates, fn, ssrFn);
 
 const currentSearch = () => location.search;
 
-const useSearch = ({ ssrSearch = "" } = {}) =>
-  useLocationProperty(currentSearch, () => ssrSearch);
+export const useSearch = ({ ssrSearch } = {}) =>
+  useLocationProperty(
+    currentSearch,
+    // != null checks for both null and undefined, but allows empty string ""
+    // This allows proper hydration: server renders with ssrSearch="?foo",
+    // client hydrates with just <Router /> and reads from location.search
+    ssrSearch != null ? () => ssrSearch : currentSearch
+  );
 
 const currentPathname = () => location.pathname;
 
-const usePathname = ({ ssrPath } = {}) =>
+export const usePathname = ({ ssrPath } = {}) =>
   useLocationProperty(
     currentPathname,
-    ssrPath ? () => ssrPath : currentPathname
+    // != null checks for both null and undefined, but allows empty string ""
+    // This allows proper hydration: server renders with ssrPath="/foo",
+    // client hydrates with just <Router /> and reads from location.pathname
+    ssrPath != null ? () => ssrPath : currentPathname
   );
 
 const currentHistoryState = () => history.state;
-const useHistoryState = () =>
+export const useHistoryState = () =>
   useLocationProperty(currentHistoryState, () => null);
 
-const navigate = (to, { replace = false, state = null } = {}) =>
+export const navigate = (to, { replace = false, state = null } = {}) =>
   history[replace ? eventReplaceState : eventPushState](state, "", to);
 
 // the 2nd argument of the `useBrowserLocation` return value is a function
 // that allows to perform a navigation.
-const useBrowserLocation = (opts = {}) => [usePathname(opts), navigate];
+export const useBrowserLocation = (opts = {}) => [usePathname(opts), navigate];
 
 const patchKey = Symbol.for("wouter_v3");
 
@@ -79,5 +88,3 @@ if (typeof history !== "undefined" && typeof window[patchKey] === "undefined") {
   // See: https://github.com/molefrog/wouter/issues/167
   Object.defineProperty(window, patchKey, { value: true });
 }
-
-export { navigate, useBrowserLocation, useHistoryState, useLocationProperty, usePathname, useSearch };

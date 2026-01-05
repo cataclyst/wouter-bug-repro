@@ -10,6 +10,7 @@ import {
   ReactNode,
   ReactElement,
   MouseEventHandler,
+  JSXElementConstructor,
 } from "react";
 
 import {
@@ -19,18 +20,18 @@ import {
   HookReturnValue,
   HookNavigationOptions,
   BaseSearchHook,
-} from "./location-hook";
+} from "./location-hook.js";
 import {
   BrowserLocationHook,
   BrowserSearchHook,
-} from "./use-browser-location";
+} from "./use-browser-location.js";
 
-import { Parser, RouterObject, RouterOptions } from "./router";
+import { Parser, RouterObject, RouterOptions } from "./router.js";
 
 // these files only export types, so we can re-export them as-is
 // in TS 5.0 we'll be able to use `export type * from ...`
-export * from "./location-hook";
-export * from "./router";
+export * from "./location-hook.js";
+export * from "./router.js";
 
 import { RouteParams } from "regexparam";
 
@@ -79,7 +80,7 @@ export interface RouteProps<
       ) => ReactNode)
     | ReactNode;
   path?: RoutePath;
-  component?: ComponentType<
+  component?: JSXElementConstructor<
     RouteComponentProps<
       T extends DefaultParams
         ? T
@@ -184,6 +185,18 @@ export function useLocation<
 export function useSearch<
   H extends BaseSearchHook = BrowserSearchHook
 >(): ReturnType<H>;
+
+export type URLSearchParamsInit = ConstructorParameters<
+  typeof URLSearchParams
+>[0];
+export type SetSearchParams = (
+  nextInit:
+    | URLSearchParamsInit
+    | ((prev: URLSearchParams) => URLSearchParamsInit),
+  options?: { replace?: boolean; state?: any }
+) => void;
+
+export function useSearchParams(): [URLSearchParams, SetSearchParams];
 
 export function useParams<T = undefined>(): T extends string
   ? StringRouteParams<T>

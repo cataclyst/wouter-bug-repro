@@ -1,4 +1,4 @@
-import { Path, SearchString } from "./location-hook";
+import { Path, SearchString } from "./location-hook.js";
 
 type Primitive = string | number | bigint | boolean | null | undefined | symbol;
 export const useLocationProperty: <S extends Primitive>(
@@ -18,7 +18,7 @@ export const useHistoryState: <T = any>() => T;
 
 export const navigate: <S = any>(
   to: string | URL,
-  options?: { replace?: boolean; state?: S }
+  options?: { replace?: boolean; state?: S; transition?: boolean }
 ) => void;
 
 /*

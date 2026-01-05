@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from './react-deps.js';
+import { useSyncExternalStore } from "./react-deps.js";
 
 // array of callback subscribed to hash updates
 const listeners = {
@@ -22,18 +22,21 @@ const subscribeToHashUpdates = (callback) => {
 // leading '#' is ignored, leading '/' is optional
 const currentHashLocation = () => "/" + location.hash.replace(/^#?\/?/, "");
 
-const navigate = (to, { state = null, replace = false } = {}) => {
+export const navigate = (to, { state = null, replace = false } = {}) => {
+  const oldURL = location.href;
+
   const [hash, search] = to.replace(/^#?\/?/, "").split("?");
 
-  const newRelativePath =
-    location.pathname + (search ? `?${search}` : location.search) + `#/${hash}`;
-  const oldURL = location.href;
-  const newURL = new URL(newRelativePath, location.origin).href;
+  // Works for ALL protocols including data:
+  const url = new URL(location.href);
+  url.hash = `/${hash}`;
+  if (search) url.search = search;
+  const newURL = url.href;
 
   if (replace) {
-    history.replaceState(state, "", newRelativePath);
+    history.replaceState(state, "", newURL);
   } else {
-    history.pushState(state, "", newRelativePath);
+    history.pushState(state, "", newURL);
   }
 
   const event =
@@ -44,7 +47,7 @@ const navigate = (to, { state = null, replace = false } = {}) => {
   dispatchEvent(event);
 };
 
-const useHashLocation = ({ ssrPath = "/" } = {}) => [
+export const useHashLocation = ({ ssrPath = "/" } = {}) => [
   useSyncExternalStore(
     subscribeToHashUpdates,
     currentHashLocation,
@@ -54,5 +57,3 @@ const useHashLocation = ({ ssrPath = "/" } = {}) => [
 ];
 
 useHashLocation.hrefs = (href) => "#" + href;
-
-export { navigate, useHashLocation };

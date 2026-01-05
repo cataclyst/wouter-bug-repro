@@ -1,11 +1,11 @@
-import mitt from 'mitt';
-import { useSyncExternalStore } from './react-deps.js';
+import mitt from "mitt";
+import { useSyncExternalStore } from "./react-deps.js";
 
 /**
  * In-memory location that supports navigation
  */
 
-const memoryLocation = ({
+export const memoryLocation = ({
   path = "/",
   searchPath = "",
   static: staticLocation,
@@ -50,6 +50,9 @@ const memoryLocation = ({
   const useMemoryQuery = () =>
     useSyncExternalStore(subscribe, () => currentSearch);
 
+  // Attach searchHook to the location hook for auto-inheritance in Router
+  useMemoryLocation.searchHook = useMemoryQuery;
+
   function reset() {
     // clean history array with mutation to preserve link
     history.splice(0, history.length);
@@ -65,5 +68,3 @@ const memoryLocation = ({
     reset: record ? reset : undefined,
   };
 };
-
-export { memoryLocation };

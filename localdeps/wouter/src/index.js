@@ -1,45 +1,24 @@
-import { parse } from 'regexparam';
-import { useBrowserLocation, useSearch as useSearch$1 } from './use-browser-location.js';
-import { createContext, forwardRef, useEvent, isValidElement, cloneElement, createElement, useContext, useRef, useMemo, useIsomorphicLayoutEffect, Fragment } from './react-deps.js';
+import { parse as parsePattern } from "regexparam";
 
-/*
- * Transforms `path` into its relative `base` version
- * If base isn't part of the path provided returns absolute path e.g. `~/app`
- */
-const _relativePath = (base, path) =>
-  !path.toLowerCase().indexOf(base.toLowerCase())
-    ? path.slice(base.length) || "/"
-    : "~" + path;
+import {
+  useBrowserLocation,
+  useSearch as useBrowserSearch,
+} from "./use-browser-location.js";
 
-/**
- * When basepath is `undefined` or '/' it is ignored (we assume it's empty string)
- */
-const baseDefaults = (base = "") => (base === "/" ? "" : base);
-
-const absolutePath = (to, base) =>
-  to[0] === "~" ? to.slice(1) : baseDefaults(base) + to;
-
-const relativePath = (base = "", path) =>
-  _relativePath(unescape(baseDefaults(base)), unescape(path));
-
-/*
- * Removes leading question mark
- */
-const stripQm = (str) => (str[0] === "?" ? str.slice(1) : str);
-
-/*
- * decodes escape sequences such as %20
- */
-const unescape = (str) => {
-  try {
-    return decodeURI(str);
-  } catch (_e) {
-    // fail-safe mode: if string can't be decoded do nothing
-    return str;
-  }
-};
-
-const sanitizeSearch = (search) => unescape(stripQm(search));
+import {
+  useRef,
+  useContext,
+  createContext,
+  isValidElement,
+  cloneElement,
+  createElement as h,
+  Fragment,
+  forwardRef,
+  useIsomorphicLayoutEffect,
+  useEvent,
+  useMemo,
+} from "./react-deps.js";
+import { absolutePath, relativePath, sanitizeSearch } from "./paths.js";
 
 /*
  * Router and router context. Router is a lightweight object that represents the current
@@ -51,8 +30,8 @@ const sanitizeSearch = (search) => unescape(stripQm(search));
 
 const defaultRouter = {
   hook: useBrowserLocation,
-  searchHook: useSearch$1,
-  parser: parse,
+  searchHook: useBrowserSearch,
+  parser: parsePattern,
   base: "",
   // this option is used to override the current location during SSR
   ssrPath: undefined,
@@ -61,12 +40,14 @@ const defaultRouter = {
   ssrContext: undefined,
   // customizes how `href` props are transformed for <Link />
   hrefs: (x) => x,
+  // wraps navigate calls, useful for view transitions
+  aroundNav: (n, t, o) => n(t, o),
 };
 
 const RouterCtx = createContext(defaultRouter);
 
 // gets the closest parent router from the context
-const useRouter = () => useContext(RouterCtx);
+export const useRouter = () => useContext(RouterCtx);
 
 /**
  * Parameters context. Used by `useParams()` to get the
@@ -76,7 +57,7 @@ const useRouter = () => useContext(RouterCtx);
 const Params0 = {},
   ParamsCtx = createContext(Params0);
 
-const useParams = () => useContext(ParamsCtx);
+export const useParams = () => useContext(ParamsCtx);
 
 /*
  * Part 1, Hooks API: useRoute and useLocation
@@ -92,18 +73,20 @@ const useLocationFromRouter = (router) => {
   // (This is achieved via `useEvent`.)
   return [
     relativePath(router.base, location),
-    useEvent((to, navOpts) => navigate(absolutePath(to, router.base), navOpts)),
+    useEvent((to, opts) =>
+      router.aroundNav(navigate, absolutePath(to, router.base), opts)
+    ),
   ];
 };
 
-const useLocation = () => useLocationFromRouter(useRouter());
+export const useLocation = () => useLocationFromRouter(useRouter());
 
-const useSearch = () => {
+export const useSearch = () => {
   const router = useRouter();
   return sanitizeSearch(router.searchHook(router));
 };
 
-const matchRoute = (parser, route, path, loose) => {
+export const matchRoute = (parser, route, path, loose) => {
   // if the input is a regexp, skip parsing
   const { pattern, keys } =
     route instanceof RegExp
@@ -151,14 +134,14 @@ const matchRoute = (parser, route, path, loose) => {
     : [false, null];
 };
 
-const useRoute = (pattern) =>
+export const useRoute = (pattern) =>
   matchRoute(useRouter().parser, pattern, useLocation()[0]);
 
 /*
  * Part 2, Low Carb Router API: Router, Route, Link, Switch
  */
 
-const Router = ({ children, ...props }) => {
+export const Router = ({ children, ...props }) => {
   // the router we will inherit from - it is the closest router in the tree,
   // unless the custom `hook` is provided (in that case it's the default one)
   const parent_ = useRouter();
@@ -167,12 +150,19 @@ const Router = ({ children, ...props }) => {
   // holds to the context value: the router object
   let value = parent;
 
-  // when `ssrPath` contains a `?` character, we can extract the search from it
-  const [path, search] = props.ssrPath?.split("?") ?? [];
-  if (search) (props.ssrSearch = search), (props.ssrPath = path);
+  // when `ssrPath` contains a `?` character, we can extract the search from it.
+  // also, ensure ssrSearch is always defined when ssrPath is provided, so that
+  // useSearch behavior matches usePathname (proper SSR hydration when client
+  // renders <Router> without props after server rendered with ssrPath/ssrSearch)
+  const [path, search = props.ssrSearch ?? ""] =
+    props.ssrPath?.split("?") ?? [];
+  if (path) (props.ssrSearch = search), (props.ssrPath = path);
 
   // hooks can define their own `href` formatter (e.g. for hash location)
   props.hrefs = props.hrefs ?? props.hook?.hrefs;
+
+  // hooks can define their own search hook (e.g. for memory location)
+  props.searchHook = props.searchHook ?? props.hook?.searchHook;
 
   // what is happening below: to avoid unnecessary rerenders in child components,
   // we ensure that the router object reference is stable, unless there are any
@@ -192,8 +182,8 @@ const Router = ({ children, ...props }) => {
     const option =
       k === "base"
         ? /* base is special case, it is appended to the parent's base */
-          parent[k] + (props[k] || "")
-        : props[k] || parent[k];
+          parent[k] + (props[k] ?? "")
+        : props[k] ?? parent[k];
 
     if (prev === next && option !== next[k]) {
       ref.current = next = { ...next };
@@ -205,12 +195,12 @@ const Router = ({ children, ...props }) => {
     if (option !== parent[k] || option !== value[k]) value = next;
   }
 
-  return createElement(RouterCtx.Provider, { value, children });
+  return h(RouterCtx.Provider, { value, children });
 };
 
 const h_route = ({ children, component }, params) => {
   // React-Router style `component` prop
-  if (component) return createElement(component, { params });
+  if (component) return h(component, { params });
 
   // support render prop or plain children
   return typeof children === "function" ? children(params) : children;
@@ -228,7 +218,7 @@ const useCachedParams = (value) => {
       : curr); // Return cached value if nothing changed
 };
 
-function useSearchParams() {
+export function useSearchParams() {
   const [location, navigate] = useLocation();
 
   const search = useSearch();
@@ -247,7 +237,7 @@ function useSearchParams() {
   return [searchParams, setSearchParams];
 }
 
-const Route = ({ path, nest, match, ...renderProps }) => {
+export const Route = ({ path, nest, match, ...renderProps }) => {
   const router = useRouter();
   const [location] = useLocationFromRouter(router);
 
@@ -264,13 +254,13 @@ const Route = ({ path, nest, match, ...renderProps }) => {
   if (!matches) return null;
 
   const children = base
-    ? createElement(Router, { base }, h_route(renderProps, params))
+    ? h(Router, { base }, h_route(renderProps, params))
     : h_route(renderProps, params);
 
-  return createElement(ParamsCtx.Provider, { value: params, children });
+  return h(ParamsCtx.Provider, { value: params, children });
 };
 
-const Link = forwardRef((props, ref) => {
+export const Link = forwardRef((props, ref) => {
   const router = useRouter();
   const [currentPath, navigate] = useLocationFromRouter(router);
 
@@ -284,6 +274,7 @@ const Link = forwardRef((props, ref) => {
     /* eslint-disable no-unused-vars */
     replace /* ignore nav props */,
     state /* ignore nav props */,
+    transition /* ignore nav props */,
     /* eslint-enable no-unused-vars */
 
     ...restProps
@@ -316,7 +307,7 @@ const Link = forwardRef((props, ref) => {
 
   return asChild && isValidElement(children)
     ? cloneElement(children, { onClick, href })
-    : createElement("a", {
+    : h("a", {
         ...restProps,
         onClick,
         href,
@@ -334,7 +325,7 @@ const flattenChildren = (children) =>
       )
     : [children];
 
-const Switch = ({ children, location }) => {
+export const Switch = ({ children, location }) => {
   const router = useRouter();
   const [originalLocation] = useLocationFromRouter(router);
 
@@ -354,14 +345,13 @@ const Switch = ({ children, location }) => {
         element.props.nest
       ))[0]
     )
-      return cloneElement(element, { match, key: element.props.path });
-        // return cloneElement(element, { match });
+      return cloneElement(element, { match });
   }
 
   return null;
 };
 
-const Redirect = (props) => {
+export const Redirect = (props) => {
   const { to, href = to } = props;
   const router = useRouter();
   const [, navigate] = useLocationFromRouter(router);
@@ -379,5 +369,3 @@ const Redirect = (props) => {
 
   return null;
 };
-
-export { Link, Redirect, Route, Router, Switch, matchRoute, useLocation, useParams, useRoute, useRouter, useSearch, useSearchParams };
