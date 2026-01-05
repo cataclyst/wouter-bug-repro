@@ -1,5 +1,15 @@
 import { useSyncExternalStore } from "./react-deps.js";
 
+// Optional import for flushSync to fix back button render order
+// Feature detection: check if react-dom is available as peer dependency
+let flushSync;
+try {
+  flushSync = (await import("react-dom")).flushSync;
+} catch {
+  // react-dom not available, use fallback (no-op)
+  flushSync = (fn) => fn();
+}
+
 /**
  * History API docs @see https://developer.mozilla.org/en-US/docs/Web/API/History
  */
@@ -15,12 +25,25 @@ const events = [
 ];
 
 const subscribeToLocationUpdates = (callback) => {
+  // Wrap callback to force synchronous updates for popstate events
+  // This ensures consistent render order between Link navigation and back button
+  const wrappedCallback = (event) => {
+    if (event.type === eventPopstate) {
+      // Force synchronous rendering for back/forward navigation
+      // This prevents React concurrent mode from re-rendering the old route
+      // before the new route is mounted
+      flushSync(() => callback(event));
+    } else {
+      callback(event);
+    }
+  };
+
   for (const event of events) {
-    addEventListener(event, callback);
+    addEventListener(event, wrappedCallback);
   }
   return () => {
     for (const event of events) {
-      removeEventListener(event, callback);
+      removeEventListener(event, wrappedCallback);
     }
   };
 };
@@ -71,8 +94,8 @@ const patchKey = Symbol.for("wouter_v3");
 if (typeof history !== "undefined" && typeof window[patchKey] === "undefined") {
   for (const type of [eventPushState, eventReplaceState]) {
     const original = history[type];
-    // TODO: we should be using unstable_batchedUpdates to avoid multiple re-renders,
-    // however that will require an additional peer dependency on react-dom.
+    // Note: We now use flushSync for popstate events (back/forward button) to ensure
+    // synchronous rendering and consistent unmount/mount order across all navigation types.
     // See: https://github.com/reactwg/react-18/discussions/86#discussioncomment-1567149
     history[type] = function () {
       const result = original.apply(this, arguments);
