@@ -241,10 +241,26 @@ export const Route = ({ path, nest, match, ...renderProps }) => {
   const router = useRouter();
   const [location] = useLocationFromRouter(router);
 
-  const [matches, routeParams, base] =
-    // `match` is a special prop to give up control to the parent,
-    // it is used by the `Switch` to avoid double matching
-    match ?? matchRoute(router.parser, path, location, nest);
+  // Cache the last computed match result in a ref
+  const cachedMatchRef = useRef(null);
+
+  // When `match` prop is provided by Switch, use it directly.
+  // When location changes but match hasn't, keep using the cached match to prevent
+  // re-rendering children with stale data (before Switch re-renders with updated match).
+  const [matches, routeParams, base] = (() => {
+    if (match) {
+      // Switch provided a match - use it and cache it
+      cachedMatchRef.current = match;
+      return match;
+    }
+
+    // No match from Switch - compute from location
+    // But if we had a cached match and location changed, the cached match is now stale.
+    // We need to compute fresh.
+    const computed = matchRoute(router.parser, path, location, nest);
+    cachedMatchRef.current = computed;
+    return computed;
+  })();
 
   // when `routeParams` is `null` (there was no match), the argument
   // below becomes {...null} = {}, see the Object Spread specs

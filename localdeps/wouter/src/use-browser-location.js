@@ -1,15 +1,5 @@
 import { useSyncExternalStore } from "./react-deps.js";
 
-// Optional import for flushSync to fix back button render order
-// Feature detection: check if react-dom is available as peer dependency
-let flushSync;
-try {
-  flushSync = (await import("react-dom")).flushSync;
-} catch {
-  // react-dom not available, use fallback (no-op)
-  flushSync = (fn) => fn();
-}
-
 /**
  * History API docs @see https://developer.mozilla.org/en-US/docs/Web/API/History
  */
@@ -25,25 +15,12 @@ const events = [
 ];
 
 const subscribeToLocationUpdates = (callback) => {
-  // Wrap callback to force synchronous updates for popstate events
-  // This ensures consistent render order between Link navigation and back button
-  const wrappedCallback = (event) => {
-    if (event.type === eventPopstate) {
-      // Force synchronous rendering for back/forward navigation
-      // This prevents React concurrent mode from re-rendering the old route
-      // before the new route is mounted
-      flushSync(() => callback(event));
-    } else {
-      callback(event);
-    }
-  };
-
   for (const event of events) {
-    addEventListener(event, wrappedCallback);
+    addEventListener(event, callback);
   }
   return () => {
     for (const event of events) {
-      removeEventListener(event, wrappedCallback);
+      removeEventListener(event, callback);
     }
   };
 };
