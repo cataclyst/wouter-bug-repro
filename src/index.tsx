@@ -44,7 +44,7 @@ const Home = () => {
     return <div>
         <h1>Steps to reproduce:</h1>
         <ul>
-            <li><strong>DO NOT USE CODESANDBOX'S BUILT-IN BROWSER-PREVIEW FOR THIS! The browser back/forward buttons there don't work the same like those in native browsers do! Open this sandbox's "deployed" version in a browser window instead: <a href="https://llp68y-3000.csb.app/">https://llp68y-3000.csb.app/</a> instead.</strong></li>
+            <li><strong>DO NOT USE CODESANDBOX'S BUILT-IN BROWSER-PREVIEW FOR THIS! The browser back/forward buttons there don't work the same like those in native browsers do! Open this sandbox's "deployed" version in a browser window instead - click "open externally" or copy the URL that looks like "https://something.csb.app")</strong></li>
             <li>Go to <Link to="/normal-route-1">/normal-route-1</Link> - you will see an alert pop up that indicates you are on "Page 1"</li>
             <li>Then click the link "Continue with buggy behavior" on that page - again, you will see an alert pop up, this time one that indicates you are on "Page 2"</li>
             <li>Press the browser's "back" button.</li>
