@@ -34,8 +34,8 @@ nav:before {
 }
 
 a {
-    color: #bbb;
-    text-decoration: white double underline;
+    color: darkseagreen;
+    text-decoration: white underline;
 }
 
 a:hover {
